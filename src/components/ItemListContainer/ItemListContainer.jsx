@@ -1,39 +1,59 @@
 import { useEffect, useState } from "react";
 
-import obtenerProductos from "../utilidades/data";
 import ItemList from "../ItemList/ItemList";
 import { useParams } from "react-router-dom";
+import { MoonLoader } from "react-spinners";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import db from "../../db/db";
 
 import "./ItemListContainer.css";
 
 const ItemListContainer = ({ saludo }) => {
   const [productos, setProductos] = useState([]);
-  const { categoria } = useParams()
+  const [cargando, setCargando] = useState(true);
+
+  const { categoria } = useParams();
 
   useEffect(() => {
-    obtenerProductos
+    setCargando(true)
+
+    let consulta
+    const productosRef = collection(db, "productos");
+
+    if(categoria){
+     
+      consulta = query(productosRef, where("categoria", "==", categoria))
+    }else{
+    
+      consulta = productosRef
+    }
+
+    getDocs(consulta)
       .then((respuesta) => {
-        if(categoria){
-          const productosFiltrados = respuesta.filter((producto)=> producto.categoria === categoria)
-          setProductos(productosFiltrados)
-        }else{
-          setProductos(respuesta);
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      })
-      .finally(() => {
-        console.log("finalizo la promesa")
+      let productosDb = respuesta.docs.map((producto) => {
+        return { id: producto.id, ...producto.data() };
       });
+      setProductos(productosDb)
+    })
+    .catch((error)=> console.log(error))
+    .finally(()=> setCargando(false))
+
   }, [categoria]);
 
   return (
-    <div className="item-list-container">
-      <p className="saludo">{saludo}</p>
-      <ItemList productos={productos} />
-    </div>
+    <>
+      {cargando ? (
+        <div className="cargando">
+          <MoonLoader color="black" />
+        </div>
+      ) : (
+        <div className="item-list-container">
+          <p className="saludo">{saludo}</p>
+          <ItemList productos={productos} />
+        </div>
+      )}
+    </>
   );
 };
 
-export default ItemListContainer;
+export default ItemListContainer;;
